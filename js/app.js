@@ -185,9 +185,14 @@ function exportCSVReport() {
 }
 
 /* =========================================================
-   نظام التحديثات: المستخدم يختار التحديث أو البقاء على إصداره
+   نظام التحديثات: فقاعة «تحديث جديد» على الشاشة + تحديث مباشر
+   - نسخة الويب/المثبتة من المتصفح: الإصدار الجديد بيتنزل في الخلفية،
+     وتظهر الفقاعة، وزرار «تحديث الآن» بينقلك له فوراً.
+   - تطبيق أندرويد: الفقاعة بتحمّل ملف التحديث وتفتح شاشة التثبيت مباشرة.
    ========================================================= */
-let swInfo = null, updateDismissedThisSession = false, updateTarget = null;
+let swInfo = null;
+let appUpdate = null; // { kind: 'web' | 'apk', version, url, size, notes }
+let lastAppCheck = 0;
 function cmpVer(a, b) {
   const pa = String(a || '0').split('.').map(n => parseInt(n, 10) || 0), pb = String(b || '0').split('.').map(n => parseInt(n, 10) || 0);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d !== 0) return d > 0 ? 1 : -1; }
@@ -211,23 +216,17 @@ function renderUpdateUI() {
   const status = document.getElementById('updateStatus');
   if (!status) return;
   const applyBtn = document.getElementById('btnApplyUpdate'), rollBtn = document.getElementById('btnRollback'), dot = document.getElementById('verDot');
-  if (IN_APP) {
-    document.getElementById('verCurrent').textContent = appVersion();
-    applyBtn.classList.toggle('hidden', !appUpdate);
-    dot.classList.toggle('warn', !!appUpdate);
-    rollBtn.classList.add('hidden');
-    if (appUpdate) { document.getElementById('btnApplyUpdateText').textContent = `تحميل الإصدار ${appUpdate.version}`; applyBtn.onclick = openAppUpdateSheet; status.innerHTML = `يوجد إصدار جديد <strong>${esc(appUpdate.version)}</strong> جاهز للتحميل.`; }
-    else status.innerHTML = 'التطبيق بيدوّر على التحديثات كل ما تفتحه، ولما ينزل إصدار جديد هتظهرلك فقاعة <strong>«تحديث جديد»</strong>.';
-    return;
-  }
-  if (IS_BETA) { status.textContent = 'هذه نسخة تجريبية للمعاينة فقط.'; document.getElementById('btnCheckUpdate').classList.add('hidden'); return; }
-  if (!('serviceWorker' in navigator)) { status.textContent = 'التحديثات التلقائية غير متاحة في هذا الوضع.'; return; }
-  const hasUpdate = swInfo && cmpVer(swInfo.latest, APP_VERSION) > 0;
-  applyBtn.classList.toggle('hidden', !hasUpdate);
-  dot.classList.toggle('warn', !!hasUpdate);
-  if (hasUpdate) { document.getElementById('btnApplyUpdateText').textContent = `تحديث إلى الإصدار ${swInfo.latest}`; applyBtn.onclick = () => showUpdateDialog(true); status.innerHTML = `يوجد إصدار جديد <strong>${esc(swInfo.latest)}</strong> جاهز. أنت حالياً على الإصدار ${APP_VERSION}.`; }
-  else if (swInfo) status.innerHTML = '<strong>أنت تستخدم أحدث إصدار.</strong> التطبيق يتحقق من التحديثات تلقائياً، ويسألك قبل تثبيت أي إصدار جديد.';
-  const prev = swInfo && swInfo.previous && swInfo.previous !== APP_VERSION ? swInfo.previous : null;
+  document.getElementById('verCurrent').textContent = appVersion();
+  applyBtn.classList.toggle('hidden', !appUpdate);
+  dot.classList.toggle('warn', !!appUpdate);
+  applyBtn.onclick = openAppUpdateSheet;
+  if (appUpdate) {
+    document.getElementById('btnApplyUpdateText').textContent = appUpdate.kind === 'apk' ? `تحميل الإصدار ${appUpdate.version}` : `تحديث إلى الإصدار ${appUpdate.version}`;
+    status.innerHTML = `يوجد إصدار جديد <strong>${esc(appUpdate.version)}</strong> — اضغط على فقاعة <strong>«تحديث جديد»</strong> أو الزرار اللي تحت.`;
+  } else if (IN_APP || swInfo) status.innerHTML = 'التطبيق بيدوّر على التحديثات كل ما تفتحه، ولما ينزل إصدار جديد هتظهرلك فقاعة <strong>«تحديث جديد»</strong> فيها كل الجديد وزرار التحديث المباشر.';
+  else if (IS_BETA) { status.textContent = 'هذه نسخة تجريبية للمعاينة فقط.'; document.getElementById('btnCheckUpdate').classList.add('hidden'); }
+  else if (!('serviceWorker' in navigator)) status.textContent = 'التحديثات التلقائية غير متاحة في هذا الوضع.';
+  const prev = !IN_APP && swInfo && swInfo.previous && swInfo.previous !== APP_VERSION ? swInfo.previous : null;
   rollBtn.classList.toggle('hidden', !prev);
   if (prev) document.getElementById('btnRollbackText').textContent = cmpVer(prev, APP_VERSION) < 0 ? `الرجوع للإصدار السابق ${prev}` : `العودة للإصدار ${prev}`;
 }
@@ -235,22 +234,19 @@ async function fetchReleaseNotes(version) {
   try { const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' }); const data = await res.json(); if (data && data.version === version && Array.isArray(data.notes)) return data.notes; } catch (e) {}
   return [];
 }
-async function showUpdateDialog() {
-  if (!swInfo || cmpVer(swInfo.latest, APP_VERSION) <= 0) return;
-  updateTarget = swInfo.latest;
-  document.getElementById('updTitle').textContent = `الإصدار ${updateTarget} متاح الآن`;
-  document.getElementById('updText').textContent = `أنت تستخدم الإصدار ${APP_VERSION}. يمكنك التحديث الآن أو الاستمرار على إصدارك الحالي.`;
-  const notes = await fetchReleaseNotes(updateTarget);
-  const ul = document.getElementById('updNotes');
-  ul.innerHTML = notes.map(n => `<li>${esc(n)}</li>`).join('');
-  ul.classList.toggle('hidden', !notes.length);
-  document.getElementById('updateDialog').classList.add('open');
-}
+// نسخة الويب: الـ Service Worker نزّل إصدار أحدث في الخلفية؟ اظهر الفقاعة
 async function evaluateUpdate(fromUser) {
   const info = await refreshVersionInfo();
   if (!info) { if (fromUser) showAppToast('⚠️ تعذر التحقق من التحديثات الآن'); return; }
-  if (cmpVer(info.latest, APP_VERSION) > 0) { const skipped = lsGet(KEYS.skip) === info.latest; if (fromUser || (!skipped && !updateDismissedThisSession)) showUpdateDialog(); }
-  else if (fromUser) showAppToast('✔️ أنت تستخدم أحدث إصدار');
+  if (cmpVer(info.latest, APP_VERSION) > 0) {
+    if (!appUpdate || appUpdate.version !== info.latest) appUpdate = { kind: 'web', version: info.latest, size: 0, notes: await fetchReleaseNotes(info.latest) };
+    renderAppUpdate();
+    if (fromUser) openAppUpdateSheet();
+  } else {
+    if (appUpdate && appUpdate.kind === 'web') appUpdate = null;
+    renderAppUpdate();
+    if (fromUser) showAppToast('✔️ أنت تستخدم أحدث إصدار');
+  }
 }
 function waitForInstall(reg, ms = 20000) {
   const sw = reg.installing || reg.waiting;
@@ -266,20 +262,17 @@ async function checkForUpdatesManual() {
   finally { btn.disabled = false; btn.style.opacity = ''; }
 }
 async function switchToVersion(version) {
-  try { const res = await swMessage({ type: 'SET_VERSION', version }); if (res && res.ok) { location.reload(); return; } } catch (e) {}
-  showAppToast('⚠️ تعذر تغيير الإصدار، حاول مرة أخرى');
+  try { const res = await swMessage({ type: 'SET_VERSION', version }); if (res && res.ok) { location.reload(); return true; } } catch (e) {}
+  showAppToast('⚠️ تعذر التحديث، حاول مرة أخرى');
+  return false;
 }
-function applyUpdate() { if (!updateTarget) return; try { localStorage.removeItem(KEYS.skip); } catch (e) {} document.getElementById('updNowBtn').disabled = true; switchToVersion(updateTarget); }
-function stayOnCurrentVersion() { if (updateTarget) lsSet(KEYS.skip, updateTarget); document.getElementById('updateDialog').classList.remove('open'); showAppToast(`ستستمر على الإصدار ${APP_VERSION}.`); }
-function remindLater() { updateDismissedThisSession = true; document.getElementById('updateDialog').classList.remove('open'); }
 function rollbackVersion() {
   if (!swInfo || !swInfo.previous) return;
   const v = swInfo.previous;
-  showAppConfirm(`التبديل إلى الإصدار ${v}؟ بياناتك لن تتأثر.`, () => { if (cmpVer(v, swInfo.latest) < 0) lsSet(KEYS.skip, swInfo.latest); switchToVersion(v); });
+  showAppConfirm(`التبديل إلى الإصدار ${v}؟ بياناتك لن تتأثر.`, () => switchToVersion(v));
 }
 
-/* ---------------- تحديثات تطبيق أندرويد ---------------- */
-let appUpdate = null, lastAppCheck = 0;
+/* ---------------- تحديثات تطبيق أندرويد (من إصدارات GitHub) ---------------- */
 function appVersion() { try { return IN_APP ? String(window.HesabatiHvacApp.versionName()) : APP_VERSION; } catch (e) { return APP_VERSION; } }
 function parseReleaseNotes(body) { return String(body || '').split(/\r?\n/).map(l => l.trim()).filter(l => /^[-*•]\s+/.test(l)).map(l => l.replace(/^[-*•]\s+/, '')).filter(Boolean).slice(0, 10); }
 async function checkAppUpdate(fromUser) {
@@ -294,27 +287,39 @@ async function checkAppUpdate(fromUser) {
     const cur = appVersion(), base = cur.replace(/-test.*$/, '');
     const newer = cmpVer(version, base) > 0 || (base !== cur && cmpVer(version, base) === 0);
     if (!apk || !version || !newer) { appUpdate = null; renderAppUpdate(); if (fromUser) showAppToast('✔️ أنت تستخدم أحدث إصدار'); return; }
-    appUpdate = { version, url: apk.browser_download_url, size: apk.size || 0, notes: parseReleaseNotes(rel.body) };
+    appUpdate = { kind: 'apk', version, url: apk.browser_download_url, size: apk.size || 0, notes: parseReleaseNotes(rel.body) };
     renderAppUpdate();
     if (fromUser) openAppUpdateSheet();
   } catch (e) { if (fromUser) showAppToast('⚠️ تعذر التحقق من التحديثات — تأكد من الإنترنت'); }
 }
+// فقاعة «تحديث جديد» على الشاشة
 function renderAppUpdate() {
   const b = document.getElementById('updBubble');
   b.classList.toggle('hidden', !appUpdate);
-  if (appUpdate) document.getElementById('updBubbleVer').textContent = `الإصدار ${appUpdate.version} · اضغط للتفاصيل`;
+  if (appUpdate) document.getElementById('updBubbleVer').textContent = `الإصدار ${appUpdate.version} · اضغط للتحديث`;
   renderUpdateUI();
 }
 function openAppUpdateSheet() {
   if (!appUpdate) return;
+  const web = appUpdate.kind === 'web';
   document.getElementById('appUpdTitle').textContent = `الإصدار ${appUpdate.version} جاهز`;
   const mb = appUpdate.size ? ` · حجمه ${(appUpdate.size / 1048576).toFixed(1)} ميجا` : '';
-  document.getElementById('appUpdSub').textContent = `إنت دلوقتي على الإصدار ${appVersion()}${mb}`;
+  document.getElementById('appUpdSub').textContent = `إنت دلوقتي على الإصدار ${appVersion()}${mb}${web ? ' · التحديث متنزّل وجاهز' : ''}`;
   document.getElementById('appUpdNotes').innerHTML = (appUpdate.notes.length ? appUpdate.notes : ['تحسينات وإصلاحات عامة']).map(n => `<li>${esc(n)}</li>`).join('');
+  const btn = document.getElementById('appUpdBtn');
+  btn.disabled = false;
+  btn.innerHTML = `${icon('download')} ${web ? 'تحديث الآن' : 'تحميل وتثبيت التحديث'}`;
+  document.getElementById('appUpdProgressBox').classList.add('hidden');
   openOverlay('appUpd');
 }
 function startAppUpdate() {
   if (!appUpdate) return;
+  if (appUpdate.kind === 'web') {
+    document.getElementById('appUpdBtn').disabled = true;
+    window.onAppUpdateProgress(100, 'applying');
+    switchToVersion(appUpdate.version).then(ok => { if (!ok) document.getElementById('appUpdBtn').disabled = false; });
+    return;
+  }
   if (!IN_APP) { window.location.href = appUpdate.url; return; }
   document.getElementById('appUpdProgressBox').classList.remove('hidden');
   document.getElementById('appUpdBtn').disabled = true;
@@ -330,6 +335,7 @@ window.onAppUpdateProgress = function (pct, state) {
   else if (state === 'install') { txt.textContent = 'تم التحميل ✓ — اضغط «تثبيت» في الشاشة اللي ظهرت'; btn.disabled = false; btn.innerHTML = `${icon('download')} تثبيت التحديث`; }
   else if (state === 'permission') { txt.textContent = 'فعّل «السماح من هذا المصدر» لتطبيق حساباتي HVAC، وارجع للتطبيق والتحميل هيكمل لوحده'; btn.disabled = false; }
   else if (state === 'failed') { txt.textContent = 'التحميل وقف — تأكد من الإنترنت وجرب تاني'; btn.disabled = false; }
+  else if (state === 'applying') txt.textContent = 'جاري التحديث... التطبيق هيفتح تاني بالإصدار الجديد';
 };
 window.onAppResume = function () { if (Date.now() - lastAppCheck > 20 * 60 * 1000) checkAppUpdate(false); };
 function initServiceWorker() {

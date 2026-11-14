@@ -1064,23 +1064,7 @@
   </div>
 </div>
 
-<!-- نافذة التحديث -->
-<div class="dialog-wrap" id="updateDialog">
-  <div class="dialog">
-    <div class="d-ic"><i data-icon="gift"></i></div>
-    <h3 id="updTitle">إصدار جديد متاح</h3>
-    <p id="updText">يوجد إصدار جديد من التطبيق.</p>
-    <ul id="updNotes" class="hidden"></ul>
-    <div class="safe"><i data-icon="shield"></i> فواتيرك وبياناتك محفوظة في الحالتين</div>
-    <div class="stack">
-      <button type="button" class="btn btn-accent" id="updNowBtn" onclick="applyUpdate()"><i data-icon="download"></i> تحديث الآن</button>
-      <button type="button" class="btn btn-ghost" onclick="stayOnCurrentVersion()">البقاء على الإصدار الحالي</button>
-      <button type="button" class="btn btn-soft" onclick="remindLater()">ذكّرني لاحقاً</button>
-    </div>
-  </div>
-</div>
-
-<!-- فقاعة تحديث تطبيق أندرويد -->
+<!-- فقاعة «تحديث جديد» (الويب وتطبيق أندرويد) -->
 <button type="button" class="upd-bubble hidden" id="updBubble" onclick="openAppUpdateSheet()" aria-label="تحديث جديد متاح">
   <span class="b-ic"><i data-icon="gift"></i></span>
   <span class="t">تحديث جديد<small id="updBubbleVer"></small></span>

@@ -145,6 +145,7 @@ function logicTests() {
 /* =========================================================
    2) اختبارات المتصفح الكاملة
    ========================================================= */
+const serveOverride = { version: null };
 function serve(port) {
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.css': 'text/css' };
   const server = http.createServer((req, res) => {
@@ -153,6 +154,12 @@ function serve(port) {
     const f = path.join(ROOT, path.normalize(p));
     if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
     res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    // محاكاة إصدار قديم منشور (لاختبار فقاعة التحديث)
+    if (serveOverride.version && /(service-worker\.js|core\.js|version\.json)$/.test(f)) {
+      const v = serveOverride.version;
+      res.end(fs.readFileSync(f, 'utf8').replace(/const SW_VERSION = "[^"]*";/, `const SW_VERSION = "${v}";`).replace(/const APP_VERSION = '[^']*';/, `const APP_VERSION = '${v}';`).replace(/"version": "[^"]*"/, `"version": "${v}"`));
+      return;
+    }
     fs.createReadStream(f).pipe(res);
   });
   return new Promise(r => server.listen(port, () => r(server)));
@@ -571,6 +578,55 @@ async function browserTests() {
   const idbNames = await ev(() => indexedDB.databases ? indexedDB.databases().then(d => d.map(x => x.name)) : []);
   check('قاعدة الصور مستقلة (hesabati_hvac_media)', idbNames.every(n => n.startsWith('hesabati_hvac_')), idbNames);
   check('لا أخطاء JavaScript طوال الاختبار', errors.length === 0, errors);
+
+  /* ---------- فقاعة التحديث ---------- */
+  console.log('\n[14] فقاعة «تحديث جديد» والتحديث المباشر');
+  const realVer = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8')).version;
+  // (أ) نسخة الويب: المستخدم على إصدار قديم، وينزل إصدار جديد
+  serveOverride.version = '0.9.0';
+  const wctx = await browser.newContext({ viewport: { width: 412, height: 900 }, serviceWorkers: 'allow' });
+  const wp = await wctx.newPage();
+  wp.on('pageerror', e => errors.push('update: ' + e.message));
+  await wp.goto(BASE); await wait(1500);
+  await wp.evaluate(() => navigator.serviceWorker.ready); await wp.reload(); await wait(1500);
+  check('الإصدار القديم شغال ومفيش فقاعة', (await wp.evaluate(() => APP_VERSION)) === '0.9.0' && await wp.isHidden('#updBubble'));
+  serveOverride.version = null; // نشر الإصدار الجديد
+  await wp.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
+  await wp.waitForSelector('#updBubble:not(.hidden)', { timeout: 20000 }).catch(() => {});
+  check('فقاعة «تحديث جديد» ظهرت على الشاشة لوحدها', await wp.isVisible('#updBubble'));
+  check('الفقاعة فيها رقم الإصدار الجديد', (await wp.textContent('#updBubbleVer')).includes(realVer));
+  await wp.screenshot({ path: path.join(OUT, '10-update-bubble.png') });
+  await wp.click('#updBubble'); await wait(500);
+  check('الفقاعة بتفتح تفاصيل التحديث وزرار «تحديث الآن»', (await wp.textContent('#appUpdBtn')).includes('تحديث الآن') && (await wp.textContent('#appUpdNotes')).length > 10);
+  await wp.screenshot({ path: path.join(OUT, '11-update-sheet.png') });
+  await wp.evaluate(() => { DB.customers.push(NORMALIZERS.customers({ id: 'cU', name: 'عميل قبل التحديث' })); saveCol('customers'); });
+  await Promise.all([wp.waitForNavigation({ timeout: 15000 }).catch(() => {}), wp.click('#appUpdBtn')]);
+  await wait(1500);
+  check('زرار «تحديث الآن» حدّث التطبيق مباشرة للإصدار الجديد', (await wp.evaluate(() => APP_VERSION)) === realVer);
+  check('البيانات محفوظة بعد التحديث', await wp.evaluate(() => DB.customers.some(c => c.id === 'cU')));
+  check('الفقاعة اختفت بعد التحديث', await wp.isHidden('#updBubble'));
+  await wctx.close();
+  // (ب) تطبيق أندرويد: الفقاعة بتحمّل ملف التحديث من GitHub وتفتح التثبيت
+  const actx = await browser.newContext({ viewport: { width: 412, height: 900 }, serviceWorkers: 'block' });
+  await actx.addInitScript(() => {
+    window.__dl = null;
+    window.HesabatiHvacApp = { versionName: () => '1.0.0', sdk: () => 34, openExternal: () => {}, print: () => {}, saveFile: () => {}, downloadUpdate: (u, v) => { window.__dl = [u, v]; } };
+  });
+  await actx.route('https://api.github.com/**', r => r.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ tag_name: 'v1.0.2', body: '- ميزة جديدة للتجربة\n- إصلاحات', assets: [{ name: 'hesabati-hvac.apk', size: 3145728, browser_download_url: 'https://github.com/AhmedHassanAbdallah/Hesabaty-HAVC/releases/download/v1.0.2/hesabati-hvac.apk' }] }) }));
+  const ap = await actx.newPage();
+  ap.on('pageerror', e => errors.push('apk: ' + e.message));
+  await ap.goto(BASE); await wait(2500);
+  check('أندرويد: فقاعة التحديث ظهرت لما نزل إصدار على GitHub', await ap.isVisible('#updBubble'));
+  await ap.click('#updBubble'); await wait(500);
+  check('أندرويد: تفاصيل التحديث من ملاحظات الإصدار', (await ap.textContent('#appUpdNotes')).includes('ميزة جديدة للتجربة'));
+  await ap.click('#appUpdBtn'); await wait(300);
+  const apkDl = await ap.evaluate(() => window.__dl);
+  check('أندرويد: زرار التحديث بيحمّل ملف APK مباشرة', !!apkDl && /hesabati-hvac\.apk$/.test(apkDl[0]) && apkDl[1] === '1.0.2', apkDl);
+  await ap.evaluate(() => window.onAppUpdateProgress(100, 'install')); await wait(200);
+  check('أندرويد: بعد التحميل يظهر «تثبيت التحديث»', (await ap.textContent('#appUpdBtn')).includes('تثبيت التحديث'));
+  await actx.close();
+  check('لا أخطاء JavaScript في اختبار التحديث', errors.length === 0, errors);
 
   await browser.close();
   server.close();
