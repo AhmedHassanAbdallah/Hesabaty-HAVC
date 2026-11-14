@@ -1,15 +1,15 @@
 /*
- * حساباتي - تطبيق أندرويد
+ * حساباتي HVAC - تطبيق أندرويد (مستقل عن حساباتي الكهرباء)
  * تصميم وتطوير: أحمد حسن عبدالله  |  واتساب: +201015421255
  * © 2026 أحمد حسن عبدالله - جميع الحقوق محفوظة.
  *
- * التطبيق يعرض ملفات حساباتي المضمّنة داخله (تعمل بدون إنترنت)، ويضيف:
+ * التطبيق يعرض ملفات حساباتي HVAC المضمّنة داخله (تعمل بدون إنترنت)، ويضيف:
  *  - الطباعة وحفظ PDF عن طريق نظام أندرويد
  *  - حفظ النسخ الاحتياطية في مجلد التنزيلات
  *  - فتح روابط واتساب وفيسبوك في تطبيقاتها
  *  - تحميل التحديث الجديد وتثبيته مباشرة من داخل التطبيق
  */
-package com.ahmedhassan.hesabaty;
+package com.ahmedhassan.hesabatihvac;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
         s.setUseWideViewPort(true);
         s.setMediaPlaybackRequiresUserGesture(true);
 
-        webView.addJavascriptInterface(new Bridge(), "HesabatyApp");
+        webView.addJavascriptInterface(new Bridge(), "HesabatiHvacApp");
         webView.setWebViewClient(new AppClient());
         webView.setWebChromeClient(new AppChromeClient());
 
@@ -268,7 +268,7 @@ public class MainActivity extends Activity {
         @Override
         public boolean onConsoleMessage(ConsoleMessage m) {
             int level = m.messageLevel() == ConsoleMessage.MessageLevel.ERROR ? Log.ERROR : Log.INFO;
-            Log.println(level, "HesabatyWeb", m.message() + " (" + m.sourceId() + ":" + m.lineNumber() + ")");
+            Log.println(level, "HesabatiHvacWeb", m.message() + " (" + m.sourceId() + ":" + m.lineNumber() + ")");
             return true;
         }
 
@@ -360,7 +360,7 @@ public class MainActivity extends Activity {
     private void doPrint(String title) {
         try {
             PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
-            String job = (title == null || title.trim().isEmpty()) ? "حساباتي" : title.trim();
+            String job = (title == null || title.trim().isEmpty()) ? "حساباتي HVAC" : title.trim();
             PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(job);
             PrintAttributes attrs = new PrintAttributes.Builder()
                     .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
@@ -374,7 +374,7 @@ public class MainActivity extends Activity {
 
     /* ---------- حفظ النسخة الاحتياطية في التنزيلات ---------- */
     private void doSaveFile(String name, String mime, String text) {
-        String safeName = name == null ? "hesabaty.json" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+        String safeName = name == null ? "hesabati-hvac.json" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
         byte[] bytes = (text == null ? "" : text).getBytes(Charset.forName("UTF-8"));
         try {
             if (Build.VERSION.SDK_INT >= 29) {
@@ -382,14 +382,14 @@ public class MainActivity extends Activity {
                 ContentValues v = new ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
                 v.put(MediaStore.MediaColumns.MIME_TYPE, mime == null ? "application/json" : mime);
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Hesabaty");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/HesabatiHVAC");
                 Uri uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
                 if (uri == null) throw new IOException("insert failed");
                 OutputStream out = cr.openOutputStream(uri);
                 if (out == null) throw new IOException("stream failed");
                 out.write(bytes);
                 out.close();
-                toast("✔ تم الحفظ في التنزيلات ← Hesabaty\n" + safeName);
+                toast("✔ تم الحفظ في التنزيلات ← HesabatiHVAC\n" + safeName);
                 return;
             }
             if (Build.VERSION.SDK_INT >= 23
@@ -398,13 +398,13 @@ public class MainActivity extends Activity {
                 requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_STORAGE);
                 return;
             }
-            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Hesabaty");
+            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "HesabatiHVAC");
             if (!dir.exists() && !dir.mkdirs()) throw new IOException("mkdir failed");
             File f = new File(dir, safeName);
             FileOutputStream out = new FileOutputStream(f);
             out.write(bytes);
             out.close();
-            toast("✔ تم الحفظ في التنزيلات ← Hesabaty\n" + safeName);
+            toast("✔ تم الحفظ في التنزيلات ← HesabatiHVAC\n" + safeName);
         } catch (Exception e) {
             // آخر حل: حفظ داخل مجلد التطبيق
             try {
@@ -458,7 +458,7 @@ public class MainActivity extends Activity {
     }
 
     private static String updateFileName(String version) {
-        return "hesabaty-" + (version == null ? "update" : version.replaceAll("[^0-9.]", "")) + ".apk";
+        return "hesabati-hvac-" + (version == null ? "update" : version.replaceAll("[^0-9.]", "")) + ".apk";
     }
 
     private File updateFile(String version) {
@@ -472,7 +472,7 @@ public class MainActivity extends Activity {
             if (f.exists()) //noinspection ResultOfMethodCallIgnored
                 f.delete();
             DownloadManager.Request r = new DownloadManager.Request(Uri.parse(url));
-            r.setTitle("تحديث حساباتي " + (version == null ? "" : version));
+            r.setTitle("تحديث حساباتي HVAC " + (version == null ? "" : version));
             r.setDescription("جاري تحميل التحديث الجديد");
             r.setMimeType(APK_MIME);
             r.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);

@@ -1,16 +1,17 @@
-# بناء تطبيق أندرويد (APK) تلقائياً ونشره كرابط تحميل مباشر
+# بناء تطبيق حساباتي HVAC للأندرويد (APK) تلقائياً ونشره كرابط تحميل مباشر
+# مستقل تماماً عن حساباتي الكهرباء: مستودع مستقل، مفتاح توقيع مستقل، ومعرّف تطبيق مستقل.
 # © 2026 أحمد حسن عبدالله - جميع الحقوق محفوظة.
 name: Android APK
 
 on:
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
     paths:
       - "index.html"
+      - "js/**"
       - "version.json"
       - "icons/**"
       - "android/**"
-      - "beta/**"
       - "tools/android-*.sh"
       - ".github/workflows/android.yml"
   workflow_dispatch:
@@ -29,10 +30,8 @@ jobs:
     outputs:
       signed: ${{ steps.key.outputs.signed }}
       version: ${{ steps.ver.outputs.version }}
-      channel: ${{ steps.ver.outputs.channel }}
-      test_version: ${{ steps.ver.outputs.test_version }}
     env:
-      HESABATY_KEY_PASSWORD: ${{ secrets.HESABATY_KEY_PASSWORD }}
+      HVAC_KEY_PASSWORD: ${{ secrets.HVAC_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -50,18 +49,9 @@ jobs:
         run: |
           V="$(python3 -c "import json;print(json.load(open('version.json'))['version'])")"
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          # الفروع غير main: نسخة اختبار من الواجهة التجريبية (beta) بس للتجربة
-          if [ "$GITHUB_REF" != "refs/heads/main" ] && [ -f beta/index.html ]; then
-            BV="$(grep -o "const APP_VERSION = '[^']*'" beta/index.html | cut -d"'" -f2)"
-            CODE="$(python3 -c "a=[int(x) for x in '$BV'.split('.')];print(a[0]*10000+a[1]*100+a[2]-1)")"
-            echo "HESABATY_VERSION_NAME=$BV-test" >> "$GITHUB_ENV"
-            echo "HESABATY_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
-            echo "INDEX_FROM_BETA=1" >> "$GITHUB_ENV"
-            echo "channel=test" >> "$GITHUB_OUTPUT"
-            echo "test_version=$BV" >> "$GITHUB_OUTPUT"
-          else
-            echo "channel=release" >> "$GITHUB_OUTPUT"
-          fi
+
+      - name: Logic tests
+        run: node tests/run-tests.js --no-browser
 
       - name: App files
         run: bash tools/android-assets.sh
@@ -69,22 +59,22 @@ jobs:
       - name: Signing key
         id: key
         run: |
-          if [ -z "${HESABATY_KEY_PASSWORD}" ]; then
+          if [ -z "${HVAC_KEY_PASSWORD}" ]; then
             echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::كلمة سر التوقيع HESABATY_KEY_PASSWORD مش متضافة — هيتعمل APK للاختبار فقط ومش هيتنشر"
+            echo "::warning::كلمة سر التوقيع HVAC_KEY_PASSWORD مش متضافة — هيتعمل APK للاختبار فقط ومش هيتنشر"
             exit 0
           fi
-          KS="$RUNNER_TEMP/hesabaty.jks"
+          KS="$RUNNER_TEMP/hesabati-hvac.jks"
           if [ -f android/keystore.enc ]; then
-            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/keystore.enc -out "$KS" -pass env:HESABATY_KEY_PASSWORD
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/keystore.enc -out "$KS" -pass env:HVAC_KEY_PASSWORD
           else
-            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -alias hesabaty -keyalg RSA -keysize 4096 -validity 36500 \
-              -storepass "$HESABATY_KEY_PASSWORD" -keypass "$HESABATY_KEY_PASSWORD" \
-              -dname "CN=Ahmed Hassan Abdallah, O=Hesabaty, C=EG"
-            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$KS" -out android/keystore.enc -pass env:HESABATY_KEY_PASSWORD
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -alias hesabatihvac -keyalg RSA -keysize 4096 -validity 36500 \
+              -storepass "$HVAC_KEY_PASSWORD" -keypass "$HVAC_KEY_PASSWORD" \
+              -dname "CN=Ahmed Hassan Abdallah, O=Hesabati HVAC, C=EG"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$KS" -out android/keystore.enc -pass env:HVAC_KEY_PASSWORD
             echo "new_key=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "HESABATY_KEYSTORE=$KS" >> "$GITHUB_ENV"
+          echo "HVAC_KEYSTORE=$KS" >> "$GITHUB_ENV"
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Build APK
@@ -94,14 +84,13 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/*.apk out/hesabaty.apk
+          cp android/app/build/outputs/apk/release/*.apk out/hesabati-hvac.apk
           ls -la out
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs out/hesabaty.apk | head -5 || true
 
       - uses: actions/upload-artifact@v4
         with:
-          name: hesabaty-apk
-          path: out/hesabaty.apk
+          name: hesabati-hvac-apk
+          path: out/hesabati-hvac.apk
 
       - name: Save encrypted signing key
         if: steps.key.outputs.new_key == 'true'
@@ -124,7 +113,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: hesabaty-apk
+          name: hesabati-hvac-apk
           path: apk
       - name: Enable KVM
         run: |
@@ -156,7 +145,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: hesabaty-apk
+          name: hesabati-hvac-apk
           path: out
       - name: Publish release
         env:
@@ -164,35 +153,10 @@ jobs:
           VER: ${{ needs.build.outputs.version }}
         run: |
           python3 -c "import json;d=json.load(open('version.json'));print('\n'.join('- '+n for n in d['notes']))" > notes.md
-          printf '\n\nحمّل الملف hesabaty.apk وثبّته على موبايلك الأندرويد.\n' >> notes.md
+          printf '\n\nحمّل الملف hesabati-hvac.apk وثبّته على موبايلك الأندرويد (مستقل عن تطبيق حساباتي الكهرباء).\n' >> notes.md
           if gh release view "v$VER" >/dev/null 2>&1; then
-            gh release upload "v$VER" out/hesabaty.apk --clobber
+            gh release upload "v$VER" out/hesabati-hvac.apk --clobber
             gh release edit "v$VER" --notes-file notes.md --latest
           else
-            gh release create "v$VER" out/hesabaty.apk --title "حساباتي $VER" --notes-file notes.md --latest
-          fi
-
-  # نسخة اختبار (مش بتظهر في فقاعة التحديث ولا في رابط التحميل الرسمي)
-  test-release:
-    needs: [build, test]
-    if: needs.build.outputs.signed == 'true' && needs.build.outputs.channel == 'test'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: hesabaty-apk
-          path: out
-      - name: Publish test build
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          BV: ${{ needs.build.outputs.test_version }}
-        run: |
-          cp out/hesabaty.apk out/hesabaty-test.apk
-          printf 'نسخة تجريبية %s للتجربة قبل النشر — مش بتوصل للمستخدمين.\nلما الإصدار الرسمي ينزل هيتثبت فوقها عادي.\n' "$BV" > notes.md
-          if gh release view test >/dev/null 2>&1; then
-            gh release upload test out/hesabaty-test.apk --clobber
-            gh release edit test --title "نسخة تجريبية $BV" --notes-file notes.md --prerelease
-          else
-            gh release create test out/hesabaty-test.apk --prerelease --title "نسخة تجريبية $BV" --notes-file notes.md --target "$GITHUB_SHA"
+            gh release create "v$VER" out/hesabati-hvac.apk --title "حساباتي HVAC $VER" --notes-file notes.md --latest
           fi
