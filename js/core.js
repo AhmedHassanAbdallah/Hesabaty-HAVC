@@ -391,6 +391,7 @@ function renderPage(level) {
     `<button type="button" class="icon-btn${a.accent ? ' accent' : ''}" data-act="${i}" aria-label="${esc(a.label || '')}">${icon(a.icon)}</button>`).join('');
   pg.querySelectorAll('.pg-actions button').forEach(b => { b.onclick = () => r.actions[+b.dataset.act].onClick(); });
   const body = document.getElementById('page' + level + 'Body');
+  body.oninput = null; body.onchange = null; body.onclick = null;
   body.innerHTML = r.html;
   if (r.after) r.after(body);
   pg.scrollTop = keepScroll;
@@ -406,6 +407,8 @@ function openForm(cfg) {
   formCtx[level] = cfg;
   document.getElementById(level + 'Title').textContent = cfg.title || '';
   const body = document.getElementById(level + 'Body');
+  // نفس الحاوية بتتستخدم لنماذج مختلفة: امسح معالجات النموذج السابق
+  body.oninput = null; body.onchange = null; body.onclick = null;
   body.innerHTML = cfg.html || '';
   const foot = document.getElementById(level + 'Foot');
   foot.innerHTML = `

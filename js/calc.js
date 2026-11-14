@@ -59,8 +59,8 @@ const CALC = {
   daily(s) { const r = { gross: round2(s.workers * s.wage * s.days) }; r.total = round2(r.gross + s.overtime - s.deductions - s.advances); return r; },
   capacity(value, unit) {
     const v = Number(value) || 0;
-    const btu = unit === 'BTU/h' ? v : unit === 'طن تبريد (TR)' ? v * 12000 : unit === 'kW' ? v / 0.29307107 : v * 9000; // الحصان التجاري المرجعي ≈ 9000 BTU/h
-    return { btu, tr: btu / 12000, kw: btu * 0.29307107, hpMarket: btu / 9000, hpMech: btu / 2544.43 };
+    const btu = unit === 'BTU/h' ? v : unit === 'طن تبريد (TR)' ? v * 12000 : unit === 'kW' ? v / 0.00029307107 : v * 9000; // الحصان التجاري المرجعي ≈ 9000 BTU/h
+    return { btu, tr: btu / 12000, kw: btu * 0.00029307107, hpMarket: btu / 9000, hpMech: btu / 2544.43 };
   },
   estimate(s) {
     if (!(s.area > 0)) return null;
@@ -139,7 +139,7 @@ function calcBody(tab) {
     <div class="row-2">${cNum('capacity', 'value', 'القدرة')}${cSel('capacity', 'unit', 'الوحدة', ['BTU/h', 'حصان', 'طن تبريد (TR)', 'kW'])}</div>
     <div id="capOut"></div>
     <div class="card" style="margin-top:12px"><div class="card-title"><div class="t-ic">${icon('list')}</div><h2>مقاسات السوق الشائعة (مرجعية)</h2></div>
-      ${MARKET_TABLE.map(([l, b]) => rowHTML(l, `≈ ${b.toLocaleString('en-US')} BTU/h · ${fmtN(b / 12000, 2)} TR · ${fmtN(b * 0.29307107, 2)} kW`)).join('')}
+      ${MARKET_TABLE.map(([l, b]) => rowHTML(l, `≈ ${b.toLocaleString('en-US')} BTU/h · ${fmtN(b / 12000, 2)} TR · ${fmtN(b * 0.00029307107, 2)} kW`)).join('')}
       <p class="hint">«الحصان» في السوق مسمى تجاري تقريبي (غالباً 1.5 حصان ≈ 12,000 BTU/h) وبيختلف حسب الشركة — راجع لوحة بيانات الجهاز. 1 طن تبريد = 12,000 BTU/h بالضبط.</p></div>
     <div class="card"><div class="card-title"><div class="t-ic orange">${icon('thermo')}</div><h2>تقدير مرجعي أولي لحمل التبريد</h2></div>
       <div class="row-2">${cNum('capacity', 'area', 'المساحة (م²)')}${cNum('capacity', 'height', 'ارتفاع السقف (م)', { ph: '3' })}</div>

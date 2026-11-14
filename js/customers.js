@@ -322,11 +322,8 @@ PAGES.devices = function () {
   const q = (document.getElementById('devSearch') || {}).value || '';
   const list = DB.devices.filter(dv => {
     if (devFilter !== 'all' && deviceCategoryOf(dv.type) !== devFilter) return false;
-    if (devFilter === 'all' || true) {
-      const c = getCustomer(dv.customerId);
-      return !q || [dv.type, dv.brand, dv.model, dv.serial, dv.location, c ? c.name : ''].join(' ').includes(q.trim());
-    }
-    return true;
+    const c = getCustomer(dv.customerId);
+    return !q.trim() || [dv.type, dv.brand, dv.model, dv.serial, dv.location, c ? c.name : ''].join(' ').includes(q.trim());
   });
   const html = `
     <button type="button" class="btn btn-accent" style="margin-bottom:12px" onclick="newDeviceWithCustomer()">${icon('plus')} جهاز جديد</button>
@@ -515,10 +512,10 @@ function bindVisitForm(body) {
   if (techs) techs.onclick = e => { const b = e.target.closest('[data-w]'); if (!b) return; const id = b.dataset.w; v.techIds = v.techIds.includes(id) ? v.techIds.filter(x => x !== id) : v.techIds.concat(id); b.classList.toggle('on'); };
   body.querySelector('#vfStatus').onclick = e => { const b = e.target.closest('[data-st]'); if (!b) return; v.status = b.dataset.st; body.querySelectorAll('#vfStatus .chip').forEach(x => x.classList.toggle('on', x === b)); };
   body.querySelector('#vfRefUnit').onclick = e => { const b = e.target.closest('[data-u]'); if (!b) return; v.refUnit = b.dataset.u; body.querySelectorAll('#vfRefUnit button').forEach(x => x.classList.toggle('on', x === b)); body.querySelector('#vfRefTot').textContent = money(visitRefTotal(NORMALIZERS.visits(v))); updateVisitLive(); };
-  body.addEventListener('input', () => {
-    const nv = NORMALIZERS.visits(v);
-    body.querySelector('#vfRefTot').textContent = money(visitRefTotal(nv));
-  });
+  body.oninput = () => {
+    const el = body.querySelector('#vfRefTot');
+    if (el) el.textContent = money(visitRefTotal(NORMALIZERS.visits(v)));
+  };
   // القراءات
   body.querySelector('#vfReadChips').onclick = e => { const b = e.target.closest('[data-r]'); if (!b) return; v.readings.push({ label: b.dataset.r, value: '' }); refreshPages(); };
   body.querySelectorAll('[data-rl]').forEach(inp => { inp.oninput = () => { v.readings[+inp.dataset.rl].label = inp.value; }; });
