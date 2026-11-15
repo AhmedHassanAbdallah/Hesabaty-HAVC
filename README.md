@@ -57,6 +57,7 @@ tests/run-tests.js  الاختبارات
 ```bash
 node tests/run-tests.js              # الحسابات + كل الوظائف في المتصفح (Playwright)
 node tests/run-tests.js --no-browser # الحسابات فقط
+node tests/layout-audit.js           # فحص كل الشاشات على عرض موبايل: مفيش نص خارج إطاره
 ```
 
 ## إصدار تحديث

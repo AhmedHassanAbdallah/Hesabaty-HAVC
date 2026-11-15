@@ -6,6 +6,8 @@
    © 2026 أحمد حسن عبدالله - جميع الحقوق محفوظة.
    ========================================================= */
 const rowHTML = (label, value, cls = '') => `<div class="sum-row ${cls}"><span>${label}</span><strong>${value}</strong></div>`;
+// صف بيانات نصية (اسم، تاريخ، قائمة خدمات...) — النص الطويل بيلف جوه الإطار
+const rowTxt = (label, value) => rowHTML(label, value, 'txt');
 function liveSearch(body, id) {
   const s = body.querySelector('#' + id);
   if (!s) return;
@@ -164,7 +166,7 @@ PAGES.reminders = function () {
     html += war.length ? war.map((w, i) => `
       <div class="inv-card" data-war="${i}">
         <div class="inv-avatar" style="background:${w.active ? 'linear-gradient(135deg,var(--success),#0b7a55)' : 'linear-gradient(135deg,#94a3b8,#64748b)'}">${icon('shield')}</div>
-        <div class="inv-info"><div class="n">${esc(w.client || '-')}</div><div class="m">${esc(w.title)} · من ${esc(fmtDate(w.start))} إلى ${esc(fmtDate(w.end))}${w.terms ? ' · ' + esc(w.terms) : ''}</div></div>
+        <div class="inv-info"><div class="n"><span class="nm">${esc(w.client || '-')}</span></div><div class="m">${esc(w.title)} · من ${esc(fmtDate(w.start))} إلى ${esc(fmtDate(w.end))}${w.terms ? ' · ' + esc(w.terms) : ''}</div></div>
         <div class="inv-amount" style="color:${w.active ? 'var(--success)' : 'var(--muted)'}">${w.active ? w.days : 'منتهي'}<small>${w.active ? 'يوم متبقي' : ''}</small></div>
       </div>`).join('') : `<div class="card empty"><div class="big">${icon('shield')}</div><p>لا توجد ضمانات مسجلة.<br>حدّد «مدة الضمان» في الفاتورة أو الزيارة.</p></div>`;
   }
@@ -273,9 +275,9 @@ PAGES.invItem = function (id) {
       </div>
     </section>
     <div class="card"><div class="sum-list">
-      ${rowHTML('التصنيف', esc(it.cat))}${it.brand ? rowHTML('الماركة', esc(it.brand)) : ''}${it.spec ? rowHTML('الموديل / المقاس', esc(it.spec)) : ''}
-      ${rowHTML('إجمالي القيمة (شراء)', money(Math.max(0, it.qty) * it.buyPrice))}${it.minQty ? rowHTML('الحد الأدنى للتنبيه', `${fmtN(it.minQty)} ${esc(it.unit)}`) : ''}
-      ${it.supplier ? rowHTML('المورد', esc(it.supplier)) : ''}${it.purchaseDate ? rowHTML('تاريخ الشراء', esc(fmtDate(it.purchaseDate))) : ''}
+      ${rowTxt('التصنيف', esc(it.cat))}${it.brand ? rowTxt('الماركة', esc(it.brand)) : ''}${it.spec ? rowTxt('الموديل / المقاس', esc(it.spec)) : ''}
+      ${rowTxt('إجمالي القيمة (شراء)', money(Math.max(0, it.qty) * it.buyPrice))}${it.minQty ? rowTxt('الحد الأدنى للتنبيه', `${fmtN(it.minQty)} ${esc(it.unit)}`) : ''}
+      ${it.supplier ? rowTxt('المورد', esc(it.supplier)) : ''}${it.purchaseDate ? rowTxt('تاريخ الشراء', esc(fmtDate(it.purchaseDate))) : ''}
     </div>${it.notes ? `<div class="note" style="margin-top:10px">${esc(it.notes)}</div>` : ''}</div>
     <div class="btn-row" style="margin-bottom:14px">
       <button type="button" class="btn btn-accent" onclick="openStockMove('${esc(it.id)}', 'in')">${icon('plus')} إضافة رصيد</button>
@@ -425,7 +427,7 @@ PAGES.workers = function () {
       const st = workerStats(w);
       return `<div class="cust-card" data-w="${esc(w.id)}"${w.active ? '' : ' style="opacity:.6"'}>
         <div class="inv-avatar">${icon('hard')}</div>
-        <div class="inv-info"><div class="n">${esc(w.name)}</div><div class="m">${esc(w.specialty || 'فني')} · يومية ${money(w.dailyWage)} · ${fmtN(st.days)} يوم · ${st.tasks} مهمة</div></div>
+        <div class="inv-info"><div class="n"><span class="nm">${esc(w.name)}</span></div><div class="m">${esc(w.specialty || 'فني')} · يومية ${money(w.dailyWage)} · ${fmtN(st.days)} يوم · ${st.tasks} مهمة</div></div>
         <div class="cust-amt ${st.due > 0 ? 'due' : 'ok'}">${fmt(st.due)}<small>${CUR} مستحق</small></div>
       </div>`;
     }).join('') : `<div class="card empty"><div class="big">${icon('hard')}</div><p>سجّل الفنيين والمساعدين بيومياتهم، وتابع الحضور والسلف والخصومات والمستحقات.</p></div>`}`;
@@ -785,7 +787,7 @@ function contractCardHTML(k) {
   const st = contractStats(k);
   return `<div class="inv-card" data-ctr="${esc(k.id)}">
     <div class="inv-avatar" style="background:${st.active ? 'linear-gradient(135deg,var(--navy-600),var(--navy-900))' : 'linear-gradient(135deg,#94a3b8,#64748b)'}">${icon('file')}</div>
-    <div class="inv-info"><div class="n">${esc(contractClient(k))}<span class="mode-badge">${esc(CONTRACT_PERIODS[k.period].label)}</span></div>
+    <div class="inv-info"><div class="n"><span class="nm">${esc(contractClient(k))}</span><span class="mode-badge">${esc(CONTRACT_PERIODS[k.period].label)}</span></div>
       <div class="m"><span dir="ltr">${esc(k.number)}</span> · ${esc(fmtDate(k.start))} ← ${esc(fmtDate(st.end))} · زيارات ${st.done}/${st.included}${st.expired ? ' · منتهي' : ''}</div></div>
     <div class="inv-amount">${fmt(k.value)}<small>${CUR}</small></div></div>`;
 }
@@ -874,10 +876,10 @@ PAGES.contract = function (id) {
       </div>
     </section>
     <div class="card"><div class="sum-list">
-      ${rowHTML('العميل', esc(contractClient(k)))}${rowHTML('الفترة', `${esc(fmtDate(k.start))} ← ${esc(fmtDate(st.end))}`)}
-      ${rowHTML('الأجهزة', devs.length ? devs.map(d => esc(d.type)).join('، ') : (k.devicesCount ? fmtN(k.devicesCount) + ' جهاز' : '-'))}
-      ${rowHTML('الخدمات المشمولة', esc(k.services.join('، ') || '-'))}
-      ${k.extraServices ? rowHTML('خدمات إضافية', esc(k.extraServices)) : ''}${k.extraPricing ? rowHTML('تسعير الإضافي', esc(k.extraPricing)) : ''}
+      ${rowTxt('العميل', esc(contractClient(k)))}${rowTxt('الفترة', `${esc(fmtDate(k.start))} ← ${esc(fmtDate(st.end))}`)}
+      ${rowTxt('الأجهزة', devs.length ? devs.map(d => esc(d.type)).join('، ') : (k.devicesCount ? fmtN(k.devicesCount) + ' جهاز' : '-'))}
+      ${rowTxt('الخدمات المشمولة', esc(k.services.join('، ') || '-'))}
+      ${k.extraServices ? rowTxt('خدمات إضافية', esc(k.extraServices)) : ''}${k.extraPricing ? rowTxt('تسعير الإضافي', esc(k.extraPricing)) : ''}
     </div>${k.notes ? `<div class="note" style="margin-top:10px">${esc(k.notes)}</div>` : ''}</div>
     <div class="section-head"><h3>زيارات العقد<span class="count">${st.done}</span></h3>
       <button type="button" class="btn btn-soft btn-sm" onclick="openVisitForm(null, {customerId: '${esc(k.customerId || '')}', contractId: '${esc(k.id)}', deviceId: '${esc(k.deviceIds[0] || '')}' || null})">${icon('plus')} زيارة</button></div>
@@ -991,7 +993,7 @@ function renderMatLists() {
     const st = matListStats(l);
     const amt = l.buyer === 'me' ? `<div class="inv-amount">${fmt(st.total)}<small>${CUR} على حسابه</small></div>` : `<div class="inv-amount" style="color:var(--muted)">${st.count}<small>صنف</small></div>`;
     return `<div class="inv-card" data-ml="${esc(l.id)}"><div class="inv-avatar" style="background:linear-gradient(135deg,var(--orange-400),var(--orange-600))">${icon('box')}</div>
-      <div class="inv-info"><div class="n">${esc(matListName(l))}</div><div class="m">${esc(fmtDate(l.date))} · ${st.count} صنف · ${l.buyer ? BUYER_LABEL[l.buyer] : 'لم يحدد مين هيشتري'}</div></div>${amt}</div>`;
+      <div class="inv-info"><div class="n"><span class="nm">${esc(matListName(l))}</span></div><div class="m">${esc(fmtDate(l.date))} · ${st.count} صنف · ${l.buyer ? BUYER_LABEL[l.buyer] : 'لم يحدد مين هيشتري'}</div></div>${amt}</div>`;
   }).join('');
   box.querySelectorAll('[data-ml]').forEach(el => { el.onclick = () => openMatList(el.dataset.ml); });
 }

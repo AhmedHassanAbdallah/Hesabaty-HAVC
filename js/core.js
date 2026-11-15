@@ -7,7 +7,7 @@
    core.js: الثوابت، التخزين المستقل، العملات، المظهر، الأيقونات،
    النوافذ والصفحات وزر الرجوع، والتنقل بين الأقسام.
    ========================================================= */
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const APP_NAME = 'حساباتي HVAC';
 const IS_BETA = /\/beta\//.test(location.pathname);
 // كل مفاتيح التخزين تبدأ بهذا البادئ: لا تختلط أبداً ببيانات حساباتي الكهرباء أو النقاشة
@@ -377,6 +377,8 @@ function openPage(key, ...args) {
   const level = pageStack.length;
   renderPage(level);
   openOverlay('page' + level);
+  const pg = document.getElementById('page' + level);
+  requestAnimationFrame(() => fitStats(pg));
 }
 function renderPage(level) {
   const p = pageStack[level - 1];
@@ -394,10 +396,23 @@ function renderPage(level) {
   body.oninput = null; body.onchange = null; body.onclick = null;
   body.innerHTML = r.html;
   if (r.after) r.after(body);
+  fitStats(pg);
   pg.scrollTop = keepScroll;
 }
 function refreshPages() { for (let i = 1; i <= pageStack.length; i++) renderPage(i); }
 function topPage() { return pageStack[pageStack.length - 1] || null; }
+
+// الأرقام الكبيرة في مربعات الملخص: بيصغر الخط لحد ما الرقم يدخل كامل في إطاره
+function fitStats(root) {
+  (root || document).querySelectorAll('.hero-stat strong, .hs-stats strong, .mini-stats strong').forEach(el => {
+    el.style.fontSize = '';
+    if (!el.offsetParent) return;
+    let size = parseFloat(getComputedStyle(el).fontSize) || 14;
+    for (let i = 0; i < 10 && el.scrollWidth > el.clientWidth + 1 && size > 9; i++) { size -= 1; el.style.fontSize = size + 'px'; }
+  });
+}
+window.addEventListener('resize', () => fitStats());
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitStats());
 
 /* ---------------- النماذج المنبثقة (form / form2) ---------------- */
 const formCtx = { form: null, form2: null };
@@ -493,6 +508,7 @@ function renderCurrentView() {
   else if (k === 'docs') renderDocsView();
   else if (k === 'ledger') renderLedger();
   else if (k === 'more') renderMore();
+  fitStats(document.getElementById('editorApp'));
 }
 // إعادة رسم كل ما هو ظاهر بعد أي تعديل في البيانات
 function refreshAll() {

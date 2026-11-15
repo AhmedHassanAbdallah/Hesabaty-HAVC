@@ -896,14 +896,14 @@ function docCardHTML(d) {
     <div class="inv-card" data-doc="${esc(d.id)}">
       <div class="inv-avatar"${t.billable ? '' : ' style="background:linear-gradient(135deg,var(--orange-400),var(--orange-600))"'}>${icon(info.icon)}</div>
       <div class="inv-info">
-        <div class="n">${esc(docTitle(d))}<span class="mode-badge${t.billable ? '' : ' items'}">${esc(info.short)}</span></div>
+        <div class="n"><span class="nm">${esc(docTitle(d))}</span><span class="mode-badge${t.billable ? '' : ' items'}">${esc(info.short)}</span></div>
         <div class="m"><span dir="ltr">${esc(d.number)}</span> · ${esc(fmtDate(d.date))} · ${d.lines.length} بند · ${money(t.total)}</div>
       </div>
       ${amt}
     </div>`;
 }
 function bindDocCards(box) { box.querySelectorAll('.inv-card[data-doc]').forEach(el => { el.onclick = () => openDoc(el.dataset.doc); }); }
-function setDocsTab(tab) { docsTab = tab === 'mat' ? 'mat' : 'docs'; renderDocsView(); }
+function setDocsTab(tab) { docsTab = tab === 'mat' ? 'mat' : 'docs'; renderDocsView(); fitStats(document.getElementById('view-docs')); }
 function renderDocsView() {
   document.getElementById('docsTabInv').classList.toggle('on', docsTab === 'docs');
   document.getElementById('docsTabMat').classList.toggle('on', docsTab === 'mat');

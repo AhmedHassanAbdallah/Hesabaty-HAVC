@@ -53,7 +53,7 @@ function renderLedger() {
       return `
         <div class="cust-card" data-id="${esc(c.id)}">
           <div class="inv-avatar">${initialOf(c.name)}</div>
-          <div class="inv-info"><div class="n">${esc(c.name)}</div><div class="m">${meta}</div></div>
+          <div class="inv-info"><div class="n"><span class="nm">${esc(c.name)}</span></div><div class="m">${meta}</div></div>
           ${amt}
           <button type="button" class="btn btn-soft btn-icon q-pay" data-pay="${esc(c.id)}" aria-label="تسجيل دفعة من ${esc(c.name)}" style="background:var(--success-soft);color:var(--success)">${icon('cash')}</button>
         </div>`;
@@ -186,7 +186,8 @@ PAGES.customer = function (id) {
    ========================================================= */
 function getDevice(id) { return DB.devices.find(d => d.id === id) || null; }
 function devicesOf(cid) { return DB.devices.filter(d => d.customerId === cid); }
-function capText(dv) { return dv.capacity ? `${dv.capacity} ${dv.capUnit}` : ''; }
+// عزل اتجاه النص (LTR) علشان «12000 BTU/h» ما تتقلبش جوه الكلام العربي
+function capText(dv) { return dv.capacity ? `\u2066${dv.capacity} ${dv.capUnit}\u2069` : ''; }
 function deviceLabel(dv) { return [dv.type, dv.brand, capText(dv)].filter(Boolean).join(' · ') + (dv.location ? ` (${dv.location})` : ''); }
 function deviceVisits(id) { return DB.visits.filter(v => v.deviceId === id).sort(byNewest); }
 function deviceNextMaint(dv) {
@@ -201,7 +202,7 @@ function deviceCardHTML(dv) {
   return `
     <div class="inv-card" data-dev="${esc(dv.id)}">
       <div class="inv-avatar"${deviceCategoryOf(dv.type) === 'تبريد' ? ' style="background:linear-gradient(135deg,#0ea5e9,#0369a1)"' : ''}>${icon(deviceCategoryOf(dv.type) === 'تبريد' ? 'snow' : 'ac')}</div>
-      <div class="inv-info"><div class="n">${esc(dv.type)}${dv.brand ? ' ' + esc(dv.brand) : ''}</div>
+      <div class="inv-info"><div class="n"><span class="nm">${esc(dv.type)}${dv.brand ? ' ' + esc(dv.brand) : ''}</span></div>
         <div class="m">${[c ? esc(c.name) : '', capText(dv) ? esc(capText(dv)) : '', dv.model ? 'موديل ' + esc(dv.model) : '', dv.location ? esc(dv.location) : ''].filter(Boolean).join(' · ')}</div></div>
       <div class="inv-amount" style="color:var(--muted)">${vs.length}<small>${next ? 'صيانة ' + esc(fmtDate(next)) : 'زيارة'}</small></div>
     </div>`;
@@ -289,7 +290,7 @@ PAGES.device = function (id) {
   const c = getCustomer(dv.customerId);
   const vs = deviceVisits(id);
   const next = deviceNextMaint(dv);
-  const row = (label, value) => value ? `<div class="sum-row"><span>${label}</span><strong>${value}</strong></div>` : '';
+  const row = (label, value) => value ? `<div class="sum-row txt"><span>${label}</span><strong>${value}</strong></div>` : '';
   const warr = activeWarrantiesForDevice(id);
   const html = `
     <div class="card">
@@ -369,7 +370,7 @@ function visitCardHTML(v) {
   return `
     <div class="inv-card" data-visit="${esc(v.id)}">
       <div class="inv-avatar" style="background:linear-gradient(135deg,var(--success),#0b7a55)">${icon('wrench')}</div>
-      <div class="inv-info"><div class="n">${esc(v.serviceType || 'زيارة')} ${statusPill(v.status)}</div>
+      <div class="inv-info"><div class="n"><span class="nm">${esc(v.serviceType || 'زيارة')}</span>${statusPill(v.status)}</div>
         <div class="m">${esc(fmtDate(v.date))}${c ? ' · ' + esc(c.name) : ''}${dv ? ' · ' + esc(dv.type) : ''}${v.fault ? ' · ' + esc(v.fault) : ''}</div></div>
       <div class="inv-amount">${fmt(visitTotal(v))}<small>${CUR}</small></div>
     </div>`;
@@ -617,7 +618,7 @@ PAGES.visit = function (id) {
   const v = getVisit(id);
   if (!v) return { title: 'زيارة', html: '<p class="hint">الزيارة غير موجودة.</p>' };
   const c = getCustomer(v.customerId), dv = getDevice(v.deviceId);
-  const row = (label, value) => value ? `<div class="sum-row"><span>${label}</span><strong style="white-space:normal;text-align:left">${value}</strong></div>` : '';
+  const row = (label, value) => value ? `<div class="sum-row txt"><span>${label}</span><strong>${value}</strong></div>` : '';
   const block = (title, text) => text ? `<div class="note" style="margin-bottom:10px"><strong>${title}:</strong> ${esc(text)}</div>` : '';
   const doc = v.docId ? getDoc(v.docId) : null;
   const ctr = v.contractId ? getContract(v.contractId) : null;

@@ -704,6 +704,25 @@
     .print-photos figure { margin: 0; }
     .print-photos img { width: 100%; height: 46mm; object-fit: cover; border-radius: 8px; border: 1px solid #dbe4f0; display: block; background: #f5f8fc; }
     .print-photos figcaption { text-align: center; font-size: 11px; color: #5b6b82 !important; margin-top: 2px; }
+    /* ============ ضبط النصوص الطويلة داخل إطارها (موبايل) ============ */
+    .page-overlay, .sheet { overflow-x: hidden; overflow-x: clip; }
+    .sum-row > span { min-width: 0; }
+    .sum-row strong span { color: inherit; }
+    .sum-row.txt { align-items: flex-start; }
+    .sum-row.txt > span { flex-shrink: 0; max-width: 42%; }
+    .sum-row.txt > strong { white-space: normal; text-align: left; overflow-wrap: anywhere; min-width: 0; line-height: 1.6; }
+    .hero-stat span, .hs-stats span, .mini-stats span { white-space: normal; line-height: 1.35; }
+    /* الأرقام ما تتقسمش: الكلام بيلف بين الكلمات، والرقم الطويل خطه بيصغر لحد ما يدخل (fitStats) */
+    .hero-stat strong, .hs-stats strong, .mini-stats strong { white-space: normal; overflow-wrap: normal; word-break: normal; line-height: 1.3; }
+    .inv-info .n { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .inv-info .n .nm { min-width: 0; overflow: hidden; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4; }
+    .inv-info .n .mode-badge, .inv-info .n .pill-st { flex-shrink: 0; margin-inline-start: 0; }
+    .inv-info .m, .i-meta, .e-meta, .m-meta { overflow-wrap: anywhere; }
+    .unit-chips .chip { white-space: normal; max-width: 100%; text-align: right; overflow-wrap: anywhere; line-height: 1.5; }
+    .card-title h2 { min-width: 0; overflow-wrap: anywhere; }
+    .card-title .tag, .card-title .pill-st { flex-shrink: 0; }
+    .link-box .l-txt b { white-space: normal; overflow-wrap: anywhere; }
+    .inv-amount, .cust-amt, .i-amt, .e-amt { flex-shrink: 0; }
     .inv-notes ol { padding-right: 18px; }
     .inv-notes ol li { margin-bottom: 3px; }
   </style>
